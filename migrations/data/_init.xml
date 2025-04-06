@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">
+
+    <changeSet author="me" id="users" runOnChange="true">
+        <loadUpdateData tableName="users" primaryKey="id" file="data/users.csv" separator=";"/>
+
+        <modifySql>
+            <regExpReplace replace="/$" with=""/>
+        </modifySql>
+    </changeSet>
+    
+    <changeSet author="me" id="instruments" runOnChange="true">
+        <loadUpdateData tableName="instruments" primaryKey="ticker" file="data/instruments.csv" separator=";"/>
+
+        <modifySql>
+            <regExpReplace replace="/$" with=""/>
+        </modifySql>
+    </changeSet>
+    
+    <changeSet author="me" id="transactions" runOnChange="true">
+        <loadUpdateData tableName="transactions" primaryKey="id" file="data/transactions.csv" separator=";"/>
+
+        <modifySql>
+            <regExpReplace replace="/$" with=""/>
+        </modifySql>
+    </changeSet>
+
+</databaseChangeLog>
