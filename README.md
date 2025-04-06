@@ -14,7 +14,9 @@ TBD
 Из директории проекта:
 
 > service docker start
+
 > docker compose up
+
 > python app/main.py
 
 ## FastAPI docs
