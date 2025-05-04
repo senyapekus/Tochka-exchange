@@ -1,23 +1,26 @@
-import datetime
+from datetime import datetime
 from typing import List, Union
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from db_models.users import User_db
-from db_models.limit_orders import LimitOrder_db
-from db_models.market_orders import MarketOrder_db
-from models import LimitOrderBody, LimitOrder, MarketOrder, MarketOrderBody, CreateOrderResponse, Direction, OrderStatus, Ok
-from db_session_provider import get_db
+from app.db_models.users import User_db
+from app.db_models.limit_orders import LimitOrder_db
+from app.db_models.market_orders import MarketOrder_db
+from app.db_models.orderbook import OrderBook_db
+from app.models import LimitOrderBody, LimitOrder, MarketOrder, MarketOrderBody, CreateOrderResponse, Direction, \
+    OrderStatus, Ok
+from app.db_session_provider import get_db
 from uuid import uuid4, UUID
-from dependencies import get_api_key
+from app.dependencies import get_api_key
 
 router = APIRouter(prefix="/api/v1/order", tags=["order"])
 
-@router.post("/", response_model=CreateOrderResponse)
+
+@router.post("/", responses={200: {"model": CreateOrderResponse}})
 async def create_order(
-    order_body: LimitOrderBody | MarketOrderBody,
-    api_key: str = Depends(get_api_key),
-    db: AsyncSession = Depends(get_db)
+        order_body: LimitOrderBody | MarketOrderBody,
+        api_key: str = Depends(get_api_key),
+        db: AsyncSession = Depends(get_db)
 ):
     user_result = await db.execute(
         select(User_db).where(User_db.api_key == api_key)
@@ -52,14 +55,58 @@ async def create_order(
         )
 
     db.add(order)
+
+    orderbook = await db.execute(
+        select(OrderBook_db).where(OrderBook_db.ticker == order_body.ticker)
+    )
+    orderbook = orderbook.scalar_one_or_none()
+
+    if not orderbook:
+        orderbook = OrderBook_db(
+            ticker=order_body.ticker,
+            bid_levels=[],
+            ask_levels=[]
+        )
+        db.add(orderbook)
+
+    current_bids = orderbook.bid_levels or []
+    current_asks = orderbook.ask_levels or []
+
+    if isinstance(order_body, LimitOrderBody):
+        levels = current_bids if order_body.direction == "BUY" else current_asks
+
+        found = False
+        for level in levels:
+            if level["price"] == order_body.price:
+                level["qty"] += order_body.qty
+                found = True
+                break
+
+        if not found:
+            levels.append({
+                "price": order_body.price,
+                "qty": order_body.qty
+            })
+
+        if order_body.direction == "BUY":
+            orderbook.bid_levels = sorted(levels, key=lambda x: -x["price"])
+        else:
+            orderbook.ask_levels = sorted(levels, key=lambda x: x["price"])
+
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(orderbook, "bid_levels")
+        flag_modified(orderbook, "ask_levels")
+
     await db.commit()
+    await db.refresh(orderbook)
 
     return CreateOrderResponse(success=True, order_id=order_id)
 
-@router.get("/", response_model=List[Union[LimitOrder, MarketOrder]])
+
+@router.get("/", responses={200: {"model": List[Union[LimitOrder, MarketOrder]]}})
 async def list_orders(
-    api_key: str = Depends(get_api_key),
-    db: AsyncSession = Depends(get_db)
+        api_key: str = Depends(get_api_key),
+        db: AsyncSession = Depends(get_db)
 ):
     user_result = await db.execute(
         select(User_db).where(User_db.api_key == api_key)
@@ -110,11 +157,12 @@ async def list_orders(
 
     return orders
 
-@router.get("/{order_id}", response_model=Union[LimitOrder, MarketOrder])
+
+@router.get("/{order_id}", responses={200: {"model": Union[LimitOrder, MarketOrder]}})
 async def get_order(
-    order_id: UUID,
-    api_key: str = Depends(get_api_key),
-    db: AsyncSession = Depends(get_db)
+        order_id: UUID,
+        api_key: str = Depends(get_api_key),
+        db: AsyncSession = Depends(get_db)
 ):
     user_result = await db.execute(
         select(User_db).where(User_db.api_key == api_key)
@@ -137,7 +185,7 @@ async def get_order(
     if limit_order:
         if limit_order.user_id != user.id:
             raise HTTPException(status_code=403, detail="Access denied")
-        
+
         return LimitOrder(
             id=limit_order.id,
             status=OrderStatus(limit_order.status),
@@ -154,7 +202,7 @@ async def get_order(
     elif market_order:
         if market_order.user_id != user.id:
             raise HTTPException(status_code=403, detail="Access denied")
-        
+
         return MarketOrder(
             id=market_order.id,
             status=OrderStatus(market_order.status),
@@ -169,11 +217,12 @@ async def get_order(
     else:
         raise HTTPException(status_code=404, detail="Order not found")
 
-@router.delete("/{order_id}", response_model=Ok)
+
+@router.delete("/{order_id}", responses={200: {"model": Ok}})
 async def cancel_order(
-    order_id: UUID,
-    api_key: str = Depends(get_api_key),
-    db: AsyncSession = Depends(get_db)
+        order_id: UUID,
+        api_key: str = Depends(get_api_key),
+        db: AsyncSession = Depends(get_db)
 ):
     user_result = await db.execute(
         select(User_db).where(User_db.api_key == api_key)

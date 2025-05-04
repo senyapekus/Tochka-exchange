@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, JSON, ForeignKey
 from sqlalchemy.sql import func
-from db_session_provider import Base
+from app.db_session_provider import Base
+
 
 class OrderBook_db(Base):
     __tablename__ = "orderbook"

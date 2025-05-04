@@ -2,7 +2,8 @@ from sqlalchemy import Boolean
 from sqlalchemy import Column, UUID, String, Enum, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.sql import func
-from db_session_provider import Base
+from app.db_session_provider import Base
+
 
 class OrderResponse_db(Base):
     __tablename__ = "order_responses"

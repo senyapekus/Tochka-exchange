@@ -1,3 +1,9 @@
+CREATE TYPE user_role AS ENUM ('USER', 'ADMIN');
+
+CREATE TYPE order_status AS ENUM ('NEW', 'EXECUTED', 'PARTIALLY_EXECUTED', 'CANCELLED');
+
+CREATE TYPE order_direction AS ENUM ('BUY', 'SELL');
+
 -- Create Users Table
 CREATE TABLE users (
                        id UUID PRIMARY KEY,
@@ -40,6 +46,7 @@ CREATE TABLE limit_orders (
                               id UUID PRIMARY KEY,
                               status VARCHAR(50) NOT NULL CHECK (status IN ('NEW', 'EXECUTED', 'PARTIALLY_EXECUTED', 'CANCELLED')),
                               user_id UUID NOT NULL REFERENCES users(id),
+                              timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                               price INT NOT NULL CHECK (price > 0),
                               direction VARCHAR(50) NOT NULL CHECK (direction IN ('BUY', 'SELL')),
                               ticker VARCHAR(10) NOT NULL REFERENCES instruments(ticker),
@@ -52,6 +59,7 @@ CREATE TABLE market_orders (
                                id UUID PRIMARY KEY,
                                status VARCHAR(50) NOT NULL CHECK (status IN ('NEW', 'EXECUTED', 'PARTIALLY_EXECUTED', 'CANCELLED')),
                                user_id UUID NOT NULL REFERENCES users(id),
+                               timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                direction VARCHAR(50) NOT NULL CHECK (direction IN ('BUY', 'SELL')),
                                ticker VARCHAR(10) NOT NULL REFERENCES instruments(ticker),
                                qty INT NOT NULL CHECK (qty >= 1)
@@ -62,4 +70,24 @@ CREATE TABLE order_responses (
                                  id UUID PRIMARY KEY,
                                  success BOOLEAN NOT NULL DEFAULT TRUE,
                                  order_id UUID NOT NULL
+);
+
+CREATE TABLE balances (
+                          user_id UUID NOT NULL,
+                          ticker VARCHAR(10) NOT NULL,
+                          amount INTEGER NOT NULL DEFAULT 0,
+                          PRIMARY KEY (user_id, ticker),
+                          FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
+CREATE TABLE orderbook (
+                           id SERIAL PRIMARY KEY,
+                           ticker VARCHAR(10) NOT NULL,
+                           bid_levels JSON NOT NULL,
+                           ask_levels JSON NOT NULL,
+                           CONSTRAINT fk_orderbook_instruments
+                               FOREIGN KEY (ticker)
+                                   REFERENCES instruments (ticker)
+                                   ON DELETE CASCADE,
+                           CONSTRAINT uq_orderbook_ticker UNIQUE (ticker)
 );

@@ -1,12 +1,12 @@
 import uvicorn
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
-from routers.public import router as public_router
-from routers.balance import router as balance_router
-from routers.balance import admin_balance_router as admin_balance_router
-from routers.order import router as order_router
-from routers.admin import router as admin_router
-from routers.user import router as user_router
+from app.routers.public import router as public_router
+from app.routers.balance import router as balance_router
+from app.routers.balance import admin_balance_router as admin_balance_router
+from app.routers.order import router as order_router
+from app.routers.admin import router as admin_router
+from app.routers.user import router as user_router
 
 app = FastAPI()
 
@@ -16,6 +16,7 @@ app.include_router(order_router)
 app.include_router(admin_router)
 app.include_router(admin_balance_router)
 app.include_router(user_router)
+
 
 def custom_openapi():
     if app.openapi_schema:
@@ -40,6 +41,7 @@ def custom_openapi():
 
     app.openapi_schema = openapi_schema
     return app.openapi_schema
+
 
 app.openapi = custom_openapi
 

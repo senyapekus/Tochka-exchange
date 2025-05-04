@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
-from models import NewUser, User, Instrument, L2OrderBook, Transaction, Level
-from db_models.users import User_db
-from db_models.instruments import Instrument_db
-from db_models.transactions import Transaction_db
-from db_models.orderbook import OrderBook_db
-from db_session_provider import get_db
+from app.models import NewUser, User, Instrument, L2OrderBook, Transaction, Level
+from app.db_models.users import User_db
+from app.db_models.instruments import Instrument_db
+from app.db_models.transactions import Transaction_db
+from app.db_models.orderbook import OrderBook_db
+from app.db_session_provider import get_db
 from sqlalchemy import select
 from uuid import uuid4
 from typing import List
@@ -12,11 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
 
-@router.post("/register", response_model=User)
+
+@router.post("/register", responses={200: {"model": User}})
 async def register(new_user: NewUser, db: AsyncSession = Depends(get_db)):
     existing_user = await db.execute(select(User_db).where(User_db.name == new_user.name))
     existing_user = existing_user.scalar_one_or_none()
-    
+
     if existing_user:
         return existing_user
 
@@ -30,14 +31,16 @@ async def register(new_user: NewUser, db: AsyncSession = Depends(get_db)):
 
     return user
 
-@router.get("/instrument", response_model=List[Instrument])
+
+@router.get("/instrument", responses={200: {"model": List[Instrument]}})
 async def list_instruments(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Instrument_db))
-    instruments = result.scalars().all()   
+    instruments = result.scalars().all()
 
     return instruments
 
-@router.get("/orderbook/{ticker}", response_model=L2OrderBook)
+
+@router.get("/orderbook/{ticker}", responses={200: {"model": L2OrderBook}})
 async def get_orderbook(ticker: str, limit: int = 10, db: AsyncSession = Depends(get_db)):
     instrument_result = await db.execute(
         select(Instrument_db).where(Instrument_db.ticker == ticker)
@@ -63,7 +66,8 @@ async def get_orderbook(ticker: str, limit: int = 10, db: AsyncSession = Depends
         ask_levels=ask_levels[:limit],
     )
 
-@router.get("/transactions/{ticker}", response_model=List[Transaction])
+
+@router.get("/transactions/{ticker}", responses={200: {"model": List[Transaction]}})
 async def get_transaction_history(ticker: str, limit: int = 10, db: AsyncSession = Depends(get_db)):
     instrument_result = await db.execute(
         select(Instrument_db).where(Instrument_db.ticker == ticker)

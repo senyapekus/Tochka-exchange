@@ -1,7 +1,8 @@
 from sqlalchemy import Column, UUID, String, Enum, Integer, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.sql import func
-from db_session_provider import Base
+from app.db_session_provider import Base
+
 
 class WithdrawRequest_db(Base):
     __tablename__ = "withdraw_requests"

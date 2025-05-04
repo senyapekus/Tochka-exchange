@@ -1,19 +1,20 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-from db_models.instruments import Instrument_db
-from db_models.users import User_db
-from models import Instrument as InstrumentSchema, Ok
-from db_session_provider import get_db
-from dependencies import check_admin_role
+from app.db_models.instruments import Instrument_db
+from app.db_models.users import User_db
+from app.models import Instrument as InstrumentSchema, Ok
+from app.db_session_provider import get_db
+from app.dependencies import check_admin_role
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
-@router.post("/instrument", response_model=Ok)
+
+@router.post("/instrument", responses={200: {"model": Ok}})
 async def add_instrument(
-    instrument: InstrumentSchema,
-    user: User_db = Depends(check_admin_role),
-    db: AsyncSession = Depends(get_db)
+        instrument: InstrumentSchema,
+        user: User_db = Depends(check_admin_role),
+        db: AsyncSession = Depends(get_db)
 ):
     existing_instrument = await db.execute(
         select(Instrument_db).where(Instrument_db.ticker == instrument.ticker)
@@ -33,11 +34,12 @@ async def add_instrument(
 
     return Ok()
 
-@router.delete("/instrument/{ticker}", response_model=Ok)
+
+@router.delete("/instrument/{ticker}", responses={200: {"model": Ok}})
 async def delete_instrument(
-    ticker: str,
-    user: User_db = Depends(check_admin_role),
-    db: AsyncSession = Depends(get_db)
+        ticker: str,
+        user: User_db = Depends(check_admin_role),
+        db: AsyncSession = Depends(get_db)
 ):
     existing_instrument = await db.execute(
         select(Instrument_db).where(Instrument_db.ticker == ticker)

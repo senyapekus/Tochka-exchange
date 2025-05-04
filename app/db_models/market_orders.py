@@ -3,7 +3,8 @@ from sqlalchemy import Column, UUID, DateTime, String, Enum, Integer, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.sql import func
-from db_session_provider import Base
+from app.db_session_provider import Base
+
 
 class MarketOrder_db(Base):
     __tablename__ = "market_orders"
