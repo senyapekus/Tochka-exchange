@@ -20,7 +20,7 @@ CREATE TABLE instruments (
 
 -- Create Transactions Table
 CREATE TABLE transactions (
-                              id UUID PRIMARY KEY,
+                              id SERIAL PRIMARY KEY,
                               ticker VARCHAR(10) NOT NULL REFERENCES instruments(ticker),
                               amount INT NOT NULL,
                               price INT NOT NULL,
