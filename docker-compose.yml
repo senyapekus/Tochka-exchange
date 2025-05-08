@@ -25,15 +25,15 @@ services:
     networks:
       - default
         
-#  exchange:
-#    build:
-#      context: .
-#      dockerfile: Dockerfile
-#    ports:
-#      - "8080:8080"
-#    environment:
-#      - PYTHONPATH=/app
-#    depends_on:
-#      - liquibase
-#    networks:
-#      - default
+  exchange:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PYTHONPATH=/app
+    depends_on:
+      - liquibase
+    networks:
+      - default
