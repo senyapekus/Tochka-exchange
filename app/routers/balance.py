@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/v1/balance", tags=["balance"])
 admin_balance_router = APIRouter(prefix="/api/v1/admin/balance", tags=["admin", "balance"])
 
 
-@router.get("/", responses={200: {"model": Dict[str, float]}})
+@router.get("", responses={200: {"model": Dict[str, float]}})
 async def get_balances(api_key: str = Depends(get_api_key), db: AsyncSession = Depends(get_db)):
     user_result = await db.execute(
         select(User_db).where(User_db.api_key == api_key)

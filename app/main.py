@@ -8,7 +8,7 @@ from app.routers.order import router as order_router
 from app.routers.admin import router as admin_router
 from app.routers.user import router as user_router
 
-app = FastAPI()
+app = FastAPI(redirect_slashes=False)
 
 app.include_router(public_router)
 app.include_router(balance_router)

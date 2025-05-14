@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError, DBAPIError
 router = APIRouter(prefix="/api/v1/order", tags=["order"])
 
 
-@router.post("/", responses={200: {"model": CreateOrderResponse}})
+@router.post("", responses={200: {"model": CreateOrderResponse}})
 async def create_order(
         order_body: LimitOrderBody | MarketOrderBody,
         api_key: str = Depends(get_api_key),
@@ -43,7 +43,7 @@ async def create_order(
             raise _handle_error(e)
 
 
-@router.get("/", responses={200: {"model": List[Union[LimitOrder, MarketOrder]]}})
+@router.get("", responses={200: {"model": List[Union[LimitOrder, MarketOrder]]}})
 async def list_orders(
         api_key: str = Depends(get_api_key),
         db: AsyncSession = Depends(get_db)
@@ -323,37 +323,40 @@ async def _execute_limit_order(
 ):
     opposite_levels = orderbook.ask_levels if order_body.direction == "BUY" else orderbook.bid_levels
     executed_qty = 0
+    new_levels = []
 
-    for level in list(opposite_levels):
+    for level in opposite_levels:
         if ((order_body.direction == "BUY" and order_body.price >= level["price"]) or
                 (order_body.direction == "SELL" and order_body.price <= level["price"])):
-
             qty = min(order_body.qty - executed_qty, level["qty"])
-
             if qty > 0:
-                await _create_transaction(
-                    db,
-                    order_body.ticker,
-                    qty,
-                    level["price"]
-                )
-
-                level["qty"] -= qty
-                if level["qty"] <= 0:
-                    opposite_levels.remove(level)
-
+                await _create_transaction(db, order_body.ticker, qty, level["price"])
                 executed_qty += qty
-                order.filled = executed_qty
-                order.status = "EXECUTED" if executed_qty == order_body.qty else "PARTIALLY_EXECUTED"
+                level["qty"] -= qty
+
+                if executed_qty == order_body.qty:
+                    break
+
+            if level["qty"] > 0:
+                new_levels.append(level)
+        else:
+            new_levels.append(level)
+
+    order.filled = executed_qty
+    order.status = (
+        "EXECUTED" if executed_qty == order_body.qty
+        else "PARTIALLY_EXECUTED" if executed_qty > 0
+        else "NEW"
+    )
 
     if order_body.direction == "BUY":
-        orderbook.ask_levels = sorted(opposite_levels, key=lambda x: x["price"])
+        orderbook.ask_levels = sorted(new_levels, key=lambda x: x["price"])
+        flag_modified(orderbook, "ask_levels")
     else:
-        orderbook.bid_levels = sorted(opposite_levels, key=lambda x: -x["price"])
+        orderbook.bid_levels = sorted(new_levels, key=lambda x: -x["price"])
+        flag_modified(orderbook, "bid_levels")
 
-    flag_modified(orderbook, "ask_levels" if order_body.direction == "BUY" else "bid_levels")
-
-    if executed_qty < order_body.qty:
+    if order.status in {"NEW", "PARTIALLY_EXECUTED"}:
         await _add_to_orderbook(orderbook, order_body, executed_qty)
 
 
@@ -372,24 +375,37 @@ async def _create_transaction(
     db.add(transaction)
 
 
+def _merge_level(levels, new_level):
+    for level in levels:
+        if level["price"] == new_level["price"]:
+            level["qty"] += new_level["qty"]
+            return
+    levels.append(new_level)
+    
+    
 async def _add_to_orderbook(
         orderbook: OrderBook_db,
         order_body: LimitOrderBody,
         executed_qty: int
 ):
+    qty_left = order_body.qty - executed_qty
+    if qty_left <= 0:
+        return
+
     levels = orderbook.bid_levels if order_body.direction == "BUY" else orderbook.ask_levels
-    levels.append({
+
+    _merge_level(levels, {
         "price": order_body.price,
-        "qty": order_body.qty - executed_qty
+        "qty": qty_left
     })
 
     if order_body.direction == "BUY":
         orderbook.bid_levels = sorted(levels, key=lambda x: -x["price"])
+        flag_modified(orderbook, "bid_levels")
     else:
         orderbook.ask_levels = sorted(levels, key=lambda x: x["price"])
-
-    flag_modified(orderbook, "bid_levels" if order_body.direction == "BUY" else "ask_levels")
-
+        flag_modified(orderbook, "ask_levels")
+        
 
 def _handle_error(e: Exception) -> HTTPException:
     if isinstance(e, IntegrityError):

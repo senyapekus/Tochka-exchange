@@ -10,7 +10,7 @@ class LimitOrder_db(Base):
     __tablename__ = "limit_orders"
     id = Column(PG_UUID(as_uuid=True), primary_key=True, server_default=func.uuid_generate_v4())
     status = Column(SQLEnum("NEW", "EXECUTED", "PARTIALLY_EXECUTED", "CANCELLED", name="order_status"), nullable=False)
-    user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     timestamp = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     price = Column(Integer, nullable=False)
     direction = Column(SQLEnum("BUY", "SELL", name="order_direction"), nullable=False)

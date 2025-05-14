@@ -1,0 +1,10 @@
+﻿FROM liquibase/liquibase:4.6.1
+
+# Set working directory inside the container
+WORKDIR /liquibase/changelog
+
+# Copy migration files into the container
+COPY ./migrations/ ./ 
+
+# Set default command
+CMD ["--changelog-file=changelog.xml", "--classpath=./", "--defaultsFile=./dev.properties", "--password=postgres", "update"]

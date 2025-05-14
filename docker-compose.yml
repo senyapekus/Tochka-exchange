@@ -4,7 +4,9 @@ networks:
 
 services:
   postgres:
-    image: postgres:10-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.Pg
     ports:
       - "5432:5432"
     restart: always
@@ -16,16 +18,16 @@ services:
       - default
     
   liquibase:
-    image: liquibase/liquibase:4.6.1
-    volumes:
-      - ./migrations:/liquibase/changelog
-    command: "--changelog-file=changelog.xml --classpath=./changelog --defaultsFile=./changelog/dev.properties --password=postgres update"
+    build:
+      context: .
+      dockerfile: Dockerfile.Lb
     depends_on:
       - postgres
     networks:
       - default
         
   exchange:
+#    image: tochka-exchange-exchange:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -34,6 +36,6 @@ services:
     environment:
       - PYTHONPATH=/app
     depends_on:
-      - liquibase
+      - postgres
     networks:
       - default
