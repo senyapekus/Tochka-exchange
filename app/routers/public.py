@@ -58,12 +58,18 @@ async def get_orderbook(ticker: str, limit: int = 10, db: AsyncSession = Depends
     if not orderbook:
         raise HTTPException(status_code=404, detail="Orderbook not found")
 
-    bid_levels = [Level(**level) for level in orderbook.bid_levels]
-    ask_levels = [Level(**level) for level in orderbook.ask_levels]
+    bid_levels = [
+        Level(price=level["price"], qty=level["qty"])
+        for level in orderbook.bid_levels[:limit]
+    ]
+    ask_levels = [
+        Level(price=level["price"], qty=level["qty"])
+        for level in orderbook.ask_levels[:limit]
+    ]
 
     return L2OrderBook(
-        bid_levels=bid_levels[:limit],
-        ask_levels=ask_levels[:limit],
+        bid_levels=bid_levels,
+        ask_levels=ask_levels,
     )
 
 

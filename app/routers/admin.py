@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.dialects.postgresql import asyncpg
+from sqlalchemy.exc import IntegrityError, DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from app.db_models.instruments import Instrument_db
@@ -30,7 +32,16 @@ async def add_instrument(
     )
     db.add(new_instrument)
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        if "ticker_format_check" in str(e.orig):
+            raise HTTPException(status_code=400, detail="Invalid ticker format: must be 2–10 uppercase Latin letters")
+        raise HTTPException(status_code=400, detail="Invalid ticker format: must be 2–10 uppercase Latin letters")
+    except DBAPIError as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Ticker too long: must be at most 10 characters")
 
     return Ok()
 
